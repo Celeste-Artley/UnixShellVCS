@@ -27,6 +27,7 @@ create_repository() {
     mkdir "staging"
     #stores in a text file what the current repo's path is.
     write_repo_path "$1"
+    echo "Repo suscessfully create."
   else
     echo "Repo already Created"
   fi
@@ -121,7 +122,7 @@ read_repo_path() {
   cat repo_path.txt
 }
 while true; do
-    echo "1: initialize a new repository"
+    echo "1: Initialize a new repository"
     echo "2: Add files to be checked in"
     echo "3: Commit files to repository"
     echo "4: Exit"
