@@ -1,5 +1,22 @@
 #!/bin/bash
 
+#todo
+
+# Create version number for commit or another command for version number
+# Create version folders with current code after each commit.
+# Create new diff log for each version of commit seqentually.
+# Create a request for Username before commiting 
+
+# Create a check-out and check-in method to make certain files avalable and not for editing. (currently it's just based on your project folder.) * the log-in is suppoed to log in should change the diff.log
+
+#longterm todo - 
+# Create multiple repos possible (this will interfear with the programs ablility to know if the repo has been created.)
+# Implement robust input validation (started already)
+# More complex file management such as file creation and secure deletion (Do this with the touch command in code to be able to log and track the new files created)
+
+#Debug
+# Check to see if you add files from subdirectories. Might need to list all files in all directories lower with an exception for the repo folder.
+
 create_repository() {
   if [ ! -d "staging" ]; then
     # Create a new directory for the repository
@@ -37,6 +54,7 @@ add_files() {
 }
 
 commit() {
+  # pulls the repo path from stored info in local file.
   repo_dir=$(read_repo_path)  
   # Move files from staging area to repository
   mv "staging/"* "$repo_dir/repo/"
@@ -53,11 +71,46 @@ commit() {
   write_log "$log_entry"
 }
 
+check_differences() {
+  # pulls the repo path from stored info in local file.
+  repo_dir=$(read_repo_path)
+  
+  # Loop through each file in the staging area
+  for file in staging/*; do
+    # Get the file name from the path (note, basename deletes any prefix that ends with a / used for the diff  output)
+    file_name=$(basename "$file")
+
+    # Check if this file exists in the repo
+    if [ -f "$repo_dir/repo/$file_name" ]; then
+      # Run diff command to compare the files and store that into the diff_output
+      diff_output=$(diff "$file" "$repo_dir/repo/$file_name")
+      
+      # Check if diff_output is empty (i.e., the files are identical)
+      if [ -z "$diff_output" ]; then
+        log_entry="No differences in $file_name"
+        # Write that there were no diffrences in the file
+        write_diff_log "$log_entry"
+      else
+        # Write the diffrences found in the log about what was changed
+        log_entry="Differences found in $file_name: $diff_output"
+        write_diff_log "$log_entry"
+      fi
+    else
+      #this catches a situation where the file has not been commited yet
+      log_entry="$file_name exists in staging but not in repository."
+      write_diff_log "$log_entry"
+    fi
+  done
+}
+
 write_log() {
   # code to write log
   echo "$1" >> log.txt
 }
-
+write_diff_log() {
+  # Writes to difference log
+  echo "$1" >> diff_log.txt
+}
 write_repo_path() {
   # Write the repo path to a file
   echo "$1" > repo_path.txt
@@ -84,6 +137,7 @@ while true; do
         add_files
         ;;
     3)
+        check_differences
         commit
         ;;
     4)
