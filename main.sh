@@ -24,12 +24,14 @@ create_repository() {
     # Create a sub-directory for the repository to keep committed changes
     mkdir "$1/repo"
     # Create a staging area for uncommitted changes
-    mkdir "staging"
+    mkdir "$1/staging"
+
+    mkdir "$1/editing"
     #stores in a text file what the current repo's path is.
     write_repo_path "$1"
-    echo "Repo suscessfully create."
+    echo -e "\nRepo suscessfully create."
   else
-    echo "Repo already Created"
+    echo -e "\nRepo already Created"
   fi
 }
 
@@ -38,7 +40,7 @@ add_files() {
   repo_dir=$(read_repo_path)
   
   # List files in the repository directory
-  echo "Files in repository:"
+  echo -e "\nFiles in repository:"
   ls "$repo_dir/"
   
   # Read user input for file selection
@@ -47,10 +49,42 @@ add_files() {
   # Check if the selected file exists in the repository using the find property
   if [ -f "$repo_dir/$selected_file" ]; then
     # Add selected file to staging area
-    cp "$repo_dir/$selected_file" "staging/"
-    echo "File $selected_file has been added to staging area."
+    mv "$repo_dir/$selected_file" "$repo_dir/editing/"
+    echo -e "\nFile $selected_file has been added to editing area."
   else
-    echo "File does not exist."
+    echo -e "\nFile does not exist."
+  fi
+}
+
+checkout(){
+  repo_dir=$(read_repo_path)
+
+  echo -e "\nFiles in repository: "
+  ls "$repo_dir/repo"
+
+  read -p "Enter name of file to check out for edit: " file_to_checkout
+
+  if [ -f "$repo_dir/repo/$file_to_checkout" ]; then
+    mv "$repo_dir/repo/$file_to_checkout" "$repo_dir/editing/"
+    echo -e "\nFile $file_to_checkout is checked out"
+  else
+    echo -e "\nFile does not exist"
+  fi
+}
+
+checkin(){
+  repo_dir=$(read_repo_path)
+
+  echo -e "\nFiles in editing: "
+  ls "$repo_dir/editing"
+
+  read -p "Enter file to checkin: " file_to_checkin
+
+  if [ -f "$repo_dir/editing/$file_to_checkin" ]; then
+    mv "$repo_dir/editing/$file_to_checkin" "$repo_dir/staging"
+    echo -e "\nFile checked in"
+  else 
+    echo -e "\nFile does not exist"
   fi
 }
 
@@ -58,10 +92,10 @@ commit() {
   # pulls the repo path from stored info in local file.
   repo_dir=$(read_repo_path)  
   # Move files from staging area to repository
-  mv "staging/"* "$repo_dir/repo/"
+  mv "$repo_dir/staging/"* "$repo_dir/repo/"
 
   # Delete all files in the staging area
-  rm -f "staging/"*
+  rm -f "$repo_dir/staging/"*
 
   # Prompt for a commit message
   read -p "Enter a commit message: " commit_message
@@ -123,30 +157,42 @@ read_repo_path() {
 }
 while true; do
     echo "1: Initialize a new repository"
-    echo "2: Add files to be checked in"
+    echo "2: Add files to repo to edit"
     echo "3: Commit files to repository"
-    echo "4: Exit"
+    echo "4: Check out file for edit"
+    echo "5: Check in file"
+    echo -e "6: Exit\n"
 
     read -p "Enter your choice: " choice
+
+    clear
 
     case $choice in
     1)
         read -p "Enter the name of the new repository: " repo_name
         create_repository "$repo_name"
+        clear
         ;;
     2)
         add_files
+        clear
         ;;
     3)
         check_differences
         commit
         ;;
     4)
-      echo "Exiting..."
+        checkout
+        ;;
+    5)
+        checkin
+        ;;
+    6)
+      echo -e "\nExiting..."
       break
       ;;
     *)
-        echo "Invalid choice."
+        echo -e "\nInvalid choice."
         ;;
     esac
 done
