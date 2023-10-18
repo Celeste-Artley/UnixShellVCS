@@ -57,7 +57,7 @@ add_files() {
 }
 
 checkout() {
-  repo_dir=$(read_repo_path)  # Assuming read_repo_path returns the path to your repo
+  repo_dir=$(read_repo_path)
 
   # Get the most recent commit number (next commit - 1)
   next_commit=$(get_next_commit_number)
