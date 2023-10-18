@@ -56,21 +56,40 @@ add_files() {
   fi
 }
 
-checkout(){
-  repo_dir=$(read_repo_path)
+checkout() {
+  repo_dir=$(read_repo_path)  # Assuming read_repo_path returns the path to your repo
 
-  echo -e "\nFiles in repository: "
-  ls "$repo_dir/repo"
+  # Get the most recent commit number (next commit - 1)
+  next_commit=$(get_next_commit_number)
+  latest_commit=$((next_commit - 1))
+  latest_commit_dir="$repo_dir/repo/$latest_commit"
 
-  read -p "Enter name of file to check out for edit: " file_to_checkout
-
-  if [ -f "$repo_dir/repo/$file_to_checkout" ]; then
-    mv "$repo_dir/repo/$file_to_checkout" "$repo_dir/editing/"
-    echo -e "\nFile $file_to_checkout is checked out"
-  else
-    echo -e "\nFile does not exist"
+  # Check if the latest commit directory exists
+  if [ ! -d "$latest_commit_dir" ]; then
+    echo "No commits available to check out."
+    return 1  # Exit the function with an error status
   fi
+
+  # List all files in the most recent commit
+  echo "Files in the most recent commit ($latest_commit):"
+  ls "$latest_commit_dir"
+
+  # Prompt the user to enter a file name to check out
+  read -p "Enter file name to check out: " file_name
+
+  file_path="$latest_commit_dir/$file_name"
+
+  # Check if the selected file exists in the latest commit
+  if [ ! -f "$file_path" ]; then
+    echo "File $file_name does not exist in the most recent commit."
+    return 1  # Exit the function with an error status
+  fi
+
+  # Copy the selected file to the working directory
+  cp "$file_path" "$repo_dir/editing"  # Assuming you want to copy to the current directory
 }
+
+
 
 checkin(){
   repo_dir=$(read_repo_path)
@@ -81,7 +100,7 @@ checkin(){
   read -p "Enter file to checkin: " file_to_checkin
 
   if [ -f "$repo_dir/editing/$file_to_checkin" ]; then
-    mv "$repo_dir/editing/$file_to_checkin" "$repo_dir/staging"
+    mv "$repo_dir/editing/$file_to_checkin" "$repo_dir/staging/"
     echo -e "\nFile checked in"
   else 
     echo -e "\nFile does not exist"
@@ -90,9 +109,17 @@ checkin(){
 
 commit() {
   # pulls the repo path from stored info in local file.
-  repo_dir=$(read_repo_path)  
-  # Move files from staging area to repository
-  mv "$repo_dir/staging/"* "$repo_dir/repo/"
+  repo_dir=$(read_repo_path)
+  
+  # Get the next commit number
+  commit_number=$(get_next_commit_number)
+  
+  # Create a new directory for this commit
+  commit_dir="$repo_dir/repo/$commit_number"
+  mkdir -p "$commit_dir"
+
+  # Move files from staging area to this commit's directory
+  mv "$repo_dir/staging/"* "$commit_dir/"
 
   # Delete all files in the staging area
   rm -f "$repo_dir/staging/"*
@@ -100,10 +127,23 @@ commit() {
   # Prompt for a commit message
   read -p "Enter a commit message: " commit_message
 
-  # Log the commit message with the time 
+  # Log the commit message with the time
   timestamp=$(date +"%Y-%m-%d %H:%M:%S")
-  log_entry="$timestamp Commit message: $commit_message"
+  log_entry="$commit_number: $timestamp: Commit message: $commit_message"
   write_log "$log_entry"
+}
+
+
+get_next_commit_number(){
+  repo_dir=$(read_repo_path)
+  if [ -f "$repo_dir/log.txt" ]; then
+    last_line=$(tail -n 1 "$repo_dir/log.txt")
+    number=$(echo "$last_line" | awk -F':' '{print $1}')
+    let "number++"
+    echo $number
+  else
+    echo "1"
+  fi
 }
 
 check_differences() {
@@ -139,8 +179,9 @@ check_differences() {
 }
 
 write_log() {
+  repo_dir=$(read_repo_path)
   # code to write log
-  echo "$1" >> log.txt
+  echo "$1" >> "$repo_dir/log.txt"
 }
 write_diff_log() {
   # Writes to difference log
@@ -155,6 +196,49 @@ read_repo_path() {
   # Read the repo path from a file
   cat repo_path.txt
 }
+
+track_changes() {
+  repo_dir=$(read_repo_path)
+  
+  next_commit=$(get_next_commit_number)
+  last_commit=$((next_commit - 1))
+
+  staging_dir="$repo_dir/staging"
+  
+  # Check if the staging area exists and is not empty
+  if [ -z "$(ls -A "$staging_dir")" ]; then
+    echo "No files in staging."
+    return  # Exit the function
+  fi
+  
+  # Loop through each file in the staging area
+  for file in "$staging_dir"/*; do
+    file_name=$(basename "$file")
+    
+    # Check if this file exists in the last commit
+    if [ -f "$repo_dir/repo/$last_commit/$file_name" ]; then
+      # Run diff command to compare the files and store that into diff_output
+      diff_output=$(diff "$file" "$repo_dir/repo/$last_commit/$file_name")
+      
+      # Check if diff_output is empty (i.e., the files are identical)
+      if [ -z "$diff_output" ]; then
+        log_entry="No differences in $file_name"
+      else
+        # Log the differences
+        log_entry="Differences found in $file_name: $diff_output"
+      fi
+    else
+      # File is new, so log that
+      log_entry="New file $file_name added"
+    fi
+    
+    # Write the log entry to changelog.txt in the repository root
+    echo "$log_entry" >> "$repo_dir/changelog.txt"
+  done
+}
+
+
+
 while true; do
     echo "1: Initialize a new repository"
     echo "2: Add files to repo to edit"
@@ -178,7 +262,7 @@ while true; do
         clear
         ;;
     3)
-        check_differences
+        track_changes
         commit
         ;;
     4)
