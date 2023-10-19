@@ -20,6 +20,8 @@
 #Debug
 # Check to see if you add files from subdirectories. Might need to list all files in all directories lower with an exception for the repo folder.
 
+current_repo=""
+
 create_repository() {
   if [ ! -d "staging" ]; then
     # Create a new directory for the repository
@@ -31,28 +33,53 @@ create_repository() {
 
     mkdir "$1/editing"
     #stores in a text file what the current repo's path is.
-    write_repo_path "$1"
+    current_repo="$1"
     echo -e "\nRepo suscessfully create."
   else
     echo -e "\nRepo already Created"
   fi
 }
 
+select_repository(){
+  #show all repos
+  echo -e "\nAvailable repositories: "
+  for dir in */; do
+    if [ -d "$dir" ]; then
+      echo "$dir"
+    fi
+  done
+
+  echo -e "\n"
+
+  #get repo name
+  read -p "Enter the name of the repository you want to work with" repo_name
+  if [ -d "$repo_name" ]; then
+    #set current_repo to selected
+    current_repo="$repo_name"
+    echo -e "\nRepository selected: $current_repo"
+  else
+    echo -e "\nRepository does not exist."
+  fi
+}
+
 add_files() {
-  # pulls the repo path from stored info in local file.
-  repo_dir=$(read_repo_path)
+  # checks current repo
+  if [ -z "$current_repo" ]; then
+    echo "No repository selected. Please select a repository first."
+    return
+  fi
   
   # List files in the repository directory
   echo -e "\nFiles in repository:"
-  ls "$repo_dir/"
+  ls "$current_repo/"
   
   # Read user input for file selection
   read -p "Enter the name of the file you want to add: " selected_file
 
   # Check if the selected file exists in the repository using the find property
-  if [ -f "$repo_dir/$selected_file" ]; then
+  if [ -f "$current_repo/$selected_file" ]; then
     # Add selected file to staging area
-    mv "$repo_dir/$selected_file" "$repo_dir/editing/"
+    mv "$current_repo/$selected_file" "$current_repo/editing/"
     echo -e "\nFile $selected_file has been added to editing area."
   else
     echo -e "\nFile does not exist."
@@ -60,12 +87,16 @@ add_files() {
 }
 
 checkout() {
-  repo_dir=$(read_repo_path)
+  # checks current repo
+  if [ -z "$current_repo" ]; then
+    echo "No repository selected. Please select a repository first."
+    return
+  fi
 
   # Get the most recent commit number (next commit - 1)
   next_commit=$(get_next_commit_number)
   latest_commit=$((next_commit - 1))
-  latest_commit_dir="$repo_dir/repo/$latest_commit"
+  latest_commit_dir="$current_repo/repo/$latest_commit"
 
   # Check if the latest commit directory exists
   if [ ! -d "$latest_commit_dir" ]; then
@@ -82,6 +113,9 @@ checkout() {
 
   file_path="$latest_commit_dir/$file_name"
 
+  #allow editing of file
+  chmod +w $file_path
+
   # Check if the selected file exists in the latest commit
   if [ ! -f "$file_path" ]; then
     echo "File $file_name does not exist in the most recent commit."
@@ -89,21 +123,28 @@ checkout() {
   fi
 
   # Copy the selected file to the working directory
-  cp "$file_path" "$repo_dir/editing"  # Assuming you want to copy to the current directory
+  cp "$file_path" "$current_repo/editing"  # Assuming you want to copy to the current directory
 }
 
 
 
 checkin(){
-  repo_dir=$(read_repo_path)
+  # checks current repo
+  if [ -z "$current_repo" ]; then
+    echo "No repository selected. Please select a repository first."
+    return
+  fi
 
+  #show all files in editing
   echo -e "\nFiles in editing: "
-  ls "$repo_dir/editing"
+  ls "$current_repo/editing"
 
   read -p "Enter file to checkin: " file_to_checkin
 
-  if [ -f "$repo_dir/editing/$file_to_checkin" ]; then
-    mv "$repo_dir/editing/$file_to_checkin" "$repo_dir/staging/"
+  #move editing to staging
+  if [ -f "$current_repo/editing/$file_to_checkin" ]; then
+    mv "$current_repo/editing/$file_to_checkin" "$current_repo/staging/"
+    chmod -w $current_repo/staging/$file_to_checkin
     echo -e "\nFile checked in"
   else 
     echo -e "\nFile does not exist"
@@ -111,37 +152,47 @@ checkin(){
 }
 
 commit() {
-  # pulls the repo path from stored info in local file.
-  repo_dir=$(read_repo_path)
+  # checks current repo
+  if [ -z "$current_repo" ]; then
+    echo "No repository selected. Please select a repository first."
+    return
+  fi
   
   # Get the next commit number
   commit_number=$(get_next_commit_number)
   
   # Create a new directory for this commit
-  commit_dir="$repo_dir/repo/$commit_number"
+  commit_dir="$current_repo/repo/$commit_number"
   mkdir -p "$commit_dir"
 
   # Move files from staging area to this commit's directory
-  mv "$repo_dir/staging/"* "$commit_dir/"
+  mv "$current_repo/staging/"* "$commit_dir/"
 
   # Delete all files in the staging area
-  rm -f "$repo_dir/staging/"*
+  rm -f "$current_repo/staging/"*
+
+  #Prompt for getting username
+  read -p "Enter username: " username
 
   # Prompt for a commit message
   read -p "Enter a commit message: " commit_message
 
   # Log the commit message with the time
   timestamp=$(date +"%Y-%m-%d %H:%M:%S")
-  log_entry="$commit_number: $timestamp: Commit message: $commit_message"
+  log_entry="$commit_number: $timestamp: User: $username , Commit message: $commit_message"
   write_log "$log_entry"
-  mv "$repo_dir"/changelog.txt "$repo_dir"/repo/"$commit_number"
+  mv "$current_repo"/changelog.txt "$current_repo"/repo/"$commit_number"
 }
 
 
 get_next_commit_number(){
-  repo_dir=$(read_repo_path)
-  if [ -f "$repo_dir/log.txt" ]; then
-    last_line=$(tail -n 1 "$repo_dir/log.txt")
+  # checks current repo
+  if [ -z "$current_repo" ]; then
+    echo "No repository selected. Please select a repository first."
+    return
+  fi
+  if [ -f "$current_repo/log.txt" ]; then
+    last_line=$(tail -n 1 "$current_repo/log.txt")
     number=$(echo "$last_line" | awk -F':' '{print $1}')
     let "number++"
     echo $number
@@ -151,8 +202,11 @@ get_next_commit_number(){
 }
 
 check_differences() {
-  # pulls the repo path from stored info in local file.
-  repo_dir=$(read_repo_path)
+  # checks current repo
+  if [ -z "$current_repo" ]; then
+    echo "No repository selected. Please select a repository first."
+    return
+  fi
   
   # Loop through each file in the staging area
   for file in staging/*; do
@@ -160,9 +214,9 @@ check_differences() {
     file_name=$(basename "$file")
 
     # Check if this file exists in the repo
-    if [ -f "$repo_dir/repo/$file_name" ]; then
+    if [ -f "$current_repo/repo/$file_name" ]; then
       # Run diff command to compare the files and store that into the diff_output
-      diff_output=$(diff "$file" "$repo_dir/repo/$file_name")
+      diff_output=$(diff "$file" "$current_repo/repo/$file_name")
       
       # Check if diff_output is empty (i.e., the files are identical)
       if [ -z "$diff_output" ]; then
@@ -183,9 +237,13 @@ check_differences() {
 }
 
 write_log() {
-  repo_dir=$(read_repo_path)
+  # checks current repo
+  if [ -z "$current_repo" ]; then
+    echo "No repository selected. Please select a repository first."
+    return
+  fi
   # code to write log
-  echo "$1" >> "$repo_dir/log.txt"
+  echo "$1" >> "$current_repo/log.txt"
 }
 write_diff_log() {
   # Writes to difference log
@@ -193,7 +251,7 @@ write_diff_log() {
 }
 write_repo_path() {
   # Write the repo path to a file
-  echo "$1" > repo_path.txt
+  echo "$1" >> repo_path.txt
 }
 
 read_repo_path() {
@@ -202,12 +260,16 @@ read_repo_path() {
 }
 
 track_changes() {
-  repo_dir=$(read_repo_path)
+  # checks current repo
+  if [ -z "$current_repo" ]; then
+    echo "No repository selected. Please select a repository first."
+    return
+  fi
   
   next_commit=$(get_next_commit_number)
   last_commit=$((next_commit - 1))
 
-  staging_dir="$repo_dir/staging"
+  staging_dir="$current_repo/staging"
   
   # Check if the staging area exists and is not empty
   if [ -z "$(ls -A "$staging_dir")" ]; then
@@ -220,9 +282,9 @@ track_changes() {
     file_name=$(basename "$file")
     
     # Check if this file exists in the last commit
-    if [ -f "$repo_dir/repo/$last_commit/$file_name" ]; then
+    if [ -f "$current_repo/repo/$last_commit/$file_name" ]; then
       # Run diff command to compare the files and store that into diff_output
-      diff_output=$(diff "$file" "$repo_dir/repo/$last_commit/$file_name")
+      diff_output=$(diff "$file" "$current_repo/repo/$last_commit/$file_name")
       
       # Check if diff_output is empty (i.e., the files are identical)
       if [ -z "$diff_output" ]; then
@@ -237,7 +299,7 @@ track_changes() {
     fi
     
     # Write the log entry to changelog.txt in the repository root
-    echo "$log_entry" >> "$repo_dir/changelog.txt"
+    echo "$log_entry" >> "$current_repo/changelog.txt"
   done
 }
 
@@ -245,11 +307,16 @@ track_changes() {
 
 while true; do
     echo "1: Initialize a new repository"
-    echo "2: Add files to repo to edit"
-    echo "3: Commit files to repository"
-    echo "4: Check out file for edit"
-    echo "5: Check in file"
-    echo -e "6: Exit\n"
+    if [ -z "$current_repo" ]; then
+      echo "2: Select current repository (no repo selected)"
+    else
+      echo "2: Select current repository (currently: $current_repo )"
+    fi
+    echo "3: Add files to repo to edit"
+    echo "4: Commit files to repository"
+    echo "5: Check out file for edit"
+    echo "6: Check in file"
+    echo -e "7: Exit\n"
 
     read -p "Enter your choice: " choice
 
@@ -262,20 +329,23 @@ while true; do
         clear
         ;;
     2)
+        select_repository
+        ;;
+    3)
         add_files
         clear
         ;;
-    3)
+    4)
         track_changes
         commit
         ;;
-    4)
+    5)
         checkout
         ;;
-    5)
+    6)
         checkin
         ;;
-    6)
+    7)
       echo -e "\nExiting..."
       break
       ;;
