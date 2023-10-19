@@ -9,8 +9,8 @@
 #currently working on -------
 # Create a request for Username before commiting 
 
-# Create a check-out and check-in method to make certain files avalable and not for editing. (currently it's just based on your project folder.) * the log-in is suppoed to log in should change the diff.log
-# ^ this kind of works but there could be a permitions thing done to the files to make them uneditable until checked out. that might be what they are looking for.
+# Create a check-out and check-in method to make certain files avalable and not for editing. (currently it's just based on your project folder.) 
+# ^ this kind of works but there could be a permitions like CHMOD or -rwxr--rw- done to the files to make them uneditable until checked out. that might be what they are looking for.
 
 #longterm todo - 
 # Create multiple repos possible (this will interfear with the programs ablility to know if the repo has been created.)
