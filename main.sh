@@ -249,15 +249,6 @@ write_diff_log() {
   # Writes to difference log
   echo "$1" >> diff_log.txt
 }
-write_repo_path() {
-  # Write the repo path to a file
-  echo "$1" >> repo_path.txt
-}
-
-read_repo_path() {
-  # Read the repo path from a file
-  cat repo_path.txt
-}
 
 track_changes() {
   # checks current repo

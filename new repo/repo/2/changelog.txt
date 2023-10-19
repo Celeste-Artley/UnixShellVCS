@@ -1,3 +1,0 @@
-Differences found in code.txt: 1d0
-< new info added
-\ No newline at end of file
