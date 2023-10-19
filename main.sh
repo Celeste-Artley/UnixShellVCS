@@ -4,7 +4,7 @@
 
 # Create version number for commit or another command for version number (done)
 # Create version folders with current code after each commit. (done)
-# Create new diff log for each version of commit seqentually. (done but needs to save to the current version number instead of root of the repo)
+# Create new diff log for each version of commit seqentually. (done)
 
 #currently working on -------
 # Create a request for Username before commiting 
