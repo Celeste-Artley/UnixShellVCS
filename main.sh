@@ -134,6 +134,7 @@ commit() {
   timestamp=$(date +"%Y-%m-%d %H:%M:%S")
   log_entry="$commit_number: $timestamp: Commit message: $commit_message"
   write_log "$log_entry"
+  mv "$repo_dir"/changelog.txt "$repo_dir"/repo/"$commit_number"
 }
 
 
