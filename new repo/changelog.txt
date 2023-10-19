@@ -1,4 +1,0 @@
-New file code.txt added
-Differences found in code.txt: 1d0
-< new changes
-\ No newline at end of file
