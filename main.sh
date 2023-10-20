@@ -3,26 +3,6 @@
 #Ben Houghton - 2498662
 #Celeste Artley - 2600927
 
-#todo
-
-# Create version number for commit or another command for version number (done)
-# Create version folders with current code after each commit. (done)
-# Create new diff log for each version of commit seqentually. (done)
-
-#currently working on -------
-# Create a request for Username before commiting 
-
-# Create a check-out and check-in method to make certain files avalable and not for editing. (currently it's just based on your project folder.) 
-# ^ this kind of works but there could be a permitions like CHMOD or -rwxr--rw- done to the files to make them uneditable until checked out. that might be what they are looking for.
-
-#longterm todo - 
-# Create multiple repos possible (this will interfear with the programs ablility to know if the repo has been created.)
-# Implement robust input validation (started already)
-# More complex file management such as file creation and secure deletion (Do this with the touch command in code to be able to log and track the new files created)
-
-#Debug
-# Check to see if you add files from subdirectories. Might need to list all files in all directories lower with an exception for the repo folder.
-
 current_repo=""
 
 create_repository() {
