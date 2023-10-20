@@ -1,5 +1,8 @@
 #!/bin/bash
 
+#Ben Houghton - 2498662
+#Celeste Artley - 2600927
+
 #todo
 
 # Create version number for commit or another command for version number (done)
@@ -52,7 +55,7 @@ select_repository(){
   echo -e "\n"
 
   #get repo name
-  read -p "Enter the name of the repository you want to work with" repo_name
+  read -p "Enter the name of the repository you want to work with: " repo_name
   if [ -d "$repo_name" ]; then
     #set current_repo to selected
     current_repo="$repo_name"
@@ -71,7 +74,7 @@ add_files() {
   
   # List files in the repository directory
   echo -e "\nFiles in repository:"
-  ls "$current_repo/"
+  find $current_repo -maxdepth 1 -type f
   
   # Read user input for file selection
   read -p "Enter the name of the file you want to add: " selected_file
@@ -84,6 +87,27 @@ add_files() {
   else
     echo -e "\nFile does not exist."
   fi
+}
+
+edit_file(){
+  #checks current repo
+  if [ -z "$current_repo" ]; then
+    echo "No repository selected. Please select a repository first."
+    return
+  fi
+
+  #prints files in editing
+  echo -e "\nFiles available for editing: "
+  find $current_repo/editing -maxdepth 1 -type f
+
+  read -p "Enter the name of the file to edit: " selected_file
+
+  if [ ! -f "$current_repo/editing/$selected_file" ]; then
+    echo "File $selected_file does not exist in the most recent commit."
+    return 1  # Exit the function with an error status
+  fi
+
+  vim $current_repo/editing/$selected_file
 }
 
 checkout() {
@@ -106,7 +130,7 @@ checkout() {
 
   # List all files in the most recent commit
   echo "Files in the most recent commit ($latest_commit):"
-  ls "$latest_commit_dir"
+  find $latest_commit_dir -maxdepth 1 -type f
 
   # Prompt the user to enter a file name to check out
   read -p "Enter file name to check out: " file_name
@@ -137,7 +161,7 @@ checkin(){
 
   #show all files in editing
   echo -e "\nFiles in editing: "
-  ls "$current_repo/editing"
+  find $current_repo/editing -maxdepth 1 -type f
 
   read -p "Enter file to checkin: " file_to_checkin
 
@@ -160,6 +184,7 @@ commit() {
   
   # Get the next commit number
   commit_number=$(get_next_commit_number)
+  commit_n=$((commit_number - 1))
   
   # Create a new directory for this commit
   commit_dir="$current_repo/repo/$commit_number"
@@ -167,6 +192,9 @@ commit() {
 
   # Move files from staging area to this commit's directory
   mv "$current_repo/staging/"* "$commit_dir/"
+
+  #copy existing repo ver
+  cp "$current_repo/repo/$commit_n/"* "$commit_dir"
 
   # Delete all files in the staging area
   rm -f "$current_repo/staging/"*
@@ -294,7 +322,19 @@ track_changes() {
   done
 }
 
+compress_to_zip(){
+  # checks current repo
+  if [ -z "$current_repo" ]; then
+    echo "No repository selected. Please select a repository first."
+    return
+  fi
 
+  next_commit_no=$(get_next_commit_number)
+  commit_no=$((next_commit_no -1 ))
+
+  #zips most recent repo
+  zip -r $current_repo/$current_repo.zip "$current_repo/repo/$commit_no"
+}
 
 while true; do
     echo "1: Initialize a new repository"
@@ -306,8 +346,10 @@ while true; do
     echo "3: Add files to repo to edit"
     echo "4: Commit files to repository"
     echo "5: Check out file for edit"
-    echo "6: Check in file"
-    echo -e "7: Exit\n"
+    echo "6: Edit file in repo"
+    echo "7: Check in file"
+    echo "8: Compress repo to zip"
+    echo -e "9: Exit\n"
 
     read -p "Enter your choice: " choice
 
@@ -334,9 +376,17 @@ while true; do
         checkout
         ;;
     6)
-        checkin
+        edit_file
         ;;
     7)
+        checkin
+        ;;
+    #i dont know if compress to zip works on qm computers as it
+    #required me to install an extra library
+    8)
+        compress_to_zip
+        ;;
+    9)
       echo -e "\nExiting..."
       break
       ;;
